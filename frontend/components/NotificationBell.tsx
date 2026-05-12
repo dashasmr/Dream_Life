@@ -8,6 +8,7 @@ import { API_URL, CleaningZone, FocusSession, TaskItem } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { getLocalDayRangeIso } from "@/lib/datetime";
 import { ui } from "@/lib/ui";
+import { useAutomationPrefsEpoch } from "@/hooks/useAutomationPrefsEpoch";
 import {
   categoryNotificationEmoji,
   generateNotifications,
@@ -71,6 +72,7 @@ async function fetchNotificationDrivers(): Promise<{
 }
 
 export function NotificationBell() {
+  const automationPrefsEpoch = useAutomationPrefsEpoch();
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -116,7 +118,7 @@ export function NotificationBell() {
       now
     });
     return mergeNotificationReadState(drafts, readIds, now);
-  }, [zones, focusSessions, tasks, expenseToday, readIds]);
+  }, [zones, focusSessions, tasks, expenseToday, readIds, automationPrefsEpoch]);
 
   const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 

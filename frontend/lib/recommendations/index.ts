@@ -1,7 +1,14 @@
-export { generateNextActions, type RecommendationsEngineInput } from "@/lib/recommendations/engine";
+export {
+  generateNextActions,
+  runRecommendationsAutomation,
+  type RecommendationsEngineInput,
+  type RecommendationsAutomationResult,
+  type TodayAutomationStats
+} from "@/lib/recommendations/engine";
 export type {
   NextActionRecommendation,
   RecommendationCategory,
   RecommendationPrimaryAction,
   RecommendationPriority
 } from "@/lib/recommendations/types";
+export type { AutomationRiskSignal } from "@/services/automation/types";

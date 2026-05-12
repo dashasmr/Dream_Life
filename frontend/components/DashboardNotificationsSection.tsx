@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { API_URL, CleaningZone, FocusSession, TaskItem } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { ui } from "@/lib/ui";
+import { useAutomationPrefsEpoch } from "@/hooks/useAutomationPrefsEpoch";
 import {
   categoryNotificationEmoji,
   generateNotifications,
@@ -33,6 +34,7 @@ export function DashboardNotificationsSection({
   expensesTodayTotal,
   onRefresh
 }: Props) {
+  const automationPrefsEpoch = useAutomationPrefsEpoch();
   const router = useRouter();
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
@@ -51,7 +53,7 @@ export function DashboardNotificationsSection({
       now
     });
     return mergeNotificationReadState(drafts, readIds, now);
-  }, [zones, focusSessions, tasks, expensesTodayTotal, readIds]);
+  }, [zones, focusSessions, tasks, expensesTodayTotal, readIds, automationPrefsEpoch]);
 
   const markRead = useCallback((id: string) => {
     const now = new Date();

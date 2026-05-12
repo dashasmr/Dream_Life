@@ -106,6 +106,20 @@ class DailySnapshot(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
 
+class Goal(Base):
+    """User-defined target tracked against real aggregates (tasks, finance, home health, focus)."""
+
+    __tablename__ = "goals"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    category: Mapped[str] = mapped_column(String(32), nullable=False)
+    target_value: Mapped[float] = mapped_column(Numeric(14, 4), nullable=False)
+    unit: Mapped[str] = mapped_column(String(16), nullable=False)
+    period: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
 class AIReview(Base):
     """Persisted structured daily AI review (one row per UTC calendar day)."""
 

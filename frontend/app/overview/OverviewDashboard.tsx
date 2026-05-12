@@ -25,11 +25,13 @@ import {
   getLocalDayRangeIso,
   getLocalLastNDaysRangeIso,
   getLocalMonthRangeIso,
+  getLocalWeekRangeIso,
   localCalendarDayKeyFromDate
 } from "@/lib/datetime";
 import type { RiskSignal } from "@/lib/risks";
 import { ui } from "@/lib/ui";
 import { DashboardNotificationsSection } from "@/components/DashboardNotificationsSection";
+import { useAutomationPrefsEpoch } from "@/hooks/useAutomationPrefsEpoch";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -40,7 +42,9 @@ import {
   saveDailyPlanCompletedIds,
   type DailyPlanItem
 } from "@/lib/dailyPlan";
-import { generateNextActions, type NextActionRecommendation } from "@/lib/recommendations";
+import { fetchGoalsForPeriod } from "@/lib/goals/api";
+import type { Goal } from "@/lib/goals/types";
+import { runRecommendationsAutomation, type NextActionRecommendation } from "@/lib/recommendations";
 import { computeSystemStatus, type SystemStatusPillar, type SystemStatusTone } from "@/lib/systemStatus";
 import { Brain, Home, ListTodo, Wallet } from "lucide-react";
 import { toast } from "sonner";
@@ -112,6 +116,7 @@ const EVENT_TYPES: EventType[] = [
 export type DashboardTabId = "overview" | "command-center" | "daily-plan" | "recommendations" | "notifications";
 
 export function OverviewDashboard({ tab }: { tab: DashboardTabId }) {
+  const automationPrefsEpoch = useAutomationPrefsEpoch();
   const router = useRouter();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [summary, setSummary] = useState<DailySummary | null>(null);
@@ -131,6 +136,7 @@ export function OverviewDashboard({ tab }: { tab: DashboardTabId }) {
   const [recActionBusy, setRecActionBusy] = useState<string | null>(null);
   const [planCompletedIds, setPlanCompletedIds] = useState<Set<string>>(() => new Set());
   const [riskSignals, setRiskSignals] = useState<RiskSignal[]>([]);
+  const [automationGoals, setAutomationGoals] = useState<Goal[]>([]);
   const showDebugTools = process.env.NODE_ENV === "development";
 
   // Large limit so same-day KPIs and recommendations see the full recent log (see `computeDailyStats` caveats).
@@ -191,6 +197,23 @@ export function OverviewDashboard({ tab }: { tab: DashboardTabId }) {
     setRiskSignals((await response.json()) as RiskSignal[]);
   }
 
+  async function loadAutomationGoals() {
+    const now = new Date();
+    const month = getLocalMonthRangeIso(now);
+    const week = getLocalWeekRangeIso(now);
+    try {
+      const [monthly, weekly] = await Promise.all([
+        fetchGoalsForPeriod("monthly", month.from, month.to),
+        fetchGoalsForPeriod("weekly", week.from, week.to)
+      ]);
+      const byId = new Map<string, Goal>();
+      for (const g of [...monthly, ...weekly]) byId.set(g.id, g);
+      setAutomationGoals([...byId.values()]);
+    } catch {
+      setAutomationGoals([]);
+    }
+  }
+
   async function refreshRecommendationDrivers() {
     await Promise.all([
       loadCommandCenterZones(),
@@ -199,7 +222,8 @@ export function OverviewDashboard({ tab }: { tab: DashboardTabId }) {
       loadFinanceRangeSummaries(),
       loadSummary(),
       loadEvents(),
-      loadRiskSignals()
+      loadRiskSignals(),
+      loadAutomationGoals()
     ]);
   }
 
@@ -237,7 +261,8 @@ export function OverviewDashboard({ tab }: { tab: DashboardTabId }) {
       loadCommandCenterZones(),
       loadFinanceRangeSummaries(),
       loadFocusSessions(),
-      loadRiskSignals()
+      loadRiskSignals(),
+      loadAutomationGoals()
     ]).catch((err: unknown) => {
       setError(describeFetchFailure(err));
     });
@@ -340,17 +365,35 @@ export function OverviewDashboard({ tab }: { tab: DashboardTabId }) {
     [dailyStatsFromEvents.tasksCompleted, focusSessions, commandZones, financeMonth?.balance_delta]
   );
 
-  const nextActions = useMemo(() => {
+  const recommendationAutomation = useMemo(() => {
     const now = new Date();
-    return generateNextActions({
+    return runRecommendationsAutomation({
       focusSessions,
       cleaningZones: commandZones,
       tasks: commandTasks,
       expensesTodayTotal: dailyStatsFromEvents.expensesTotal,
       dailyEventsTotal: countEventsOnLocalDay(events, localCalendarDayKeyFromDate(now)),
+      goals: automationGoals,
+      todayStats: {
+        tasksCompleted: dailyStatsFromEvents.tasksCompleted,
+        focusMinutes: dailyStatsFromEvents.focusMinutes
+      },
       now
     });
-  }, [focusSessions, commandZones, commandTasks, dailyStatsFromEvents.expensesTotal, events]);
+  }, [
+    focusSessions,
+    commandZones,
+    commandTasks,
+    dailyStatsFromEvents.expensesTotal,
+    dailyStatsFromEvents.tasksCompleted,
+    dailyStatsFromEvents.focusMinutes,
+    events,
+    automationGoals,
+    automationPrefsEpoch
+  ]);
+  const nextActions = recommendationAutomation.recommendations;
+  const automationRiskSignals = recommendationAutomation.automationRiskSignals;
+  const automationPositiveInsights = recommendationAutomation.positiveInsights;
 
   const dailyPlanBase = useMemo(
     () =>
@@ -650,6 +693,44 @@ export function OverviewDashboard({ tab }: { tab: DashboardTabId }) {
 
       {tab === "recommendations" ? (
       <>
+      {automationPositiveInsights.length > 0 ? (
+        <section className="mb-4 rounded-2xl border border-[#2f4b3a]/60 bg-[#0c1210] p-5 md:p-6">
+          <h2 className="text-lg font-semibold text-[#b7e4c7]">Automation · positive signal</h2>
+          <ul className="mt-3 space-y-2">
+            {automationPositiveInsights.map((line, i) => (
+              <li key={`insight-${i}`} className={`text-sm leading-relaxed text-[#d8ebe0]`}>
+                {line}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {automationRiskSignals.length > 0 ? (
+        <section className="mb-4 rounded-2xl border border-[#2A2F36] bg-[#11151A] p-5 md:p-6">
+          <h2 className="text-lg font-semibold text-white">Automation · goal risk</h2>
+          <p className={`mt-1 text-sm ${ui.mutedText}`}>Generated when tracked goals fall behind for the current week or month.</p>
+          <ul className="mt-4 space-y-2">
+            {automationRiskSignals.map((sig) => (
+              <li
+                key={sig.id}
+                className={`rounded-lg border border-l-4 border-[#2A2F36] px-3 py-2.5 text-sm text-[#e8eaed] ${riskSeverityShell(sig.severity)}`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>{sig.message}</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-[#8A8F98]">
+                    {riskSeverityLabel(sig.severity)}
+                  </span>
+                </div>
+                <p className={`mt-1 text-xs tabular-nums ${ui.mutedText}`} suppressHydrationWarning>
+                  {formatDateTimeFiNumeric(sig.detectedAt)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section className="rounded-2xl border border-[#2A2F36] bg-[#11151A] p-5 md:p-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>

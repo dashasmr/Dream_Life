@@ -207,6 +207,33 @@ class RiskSignalRead(BaseModel):
     detectedAt: str
 
 
+GoalCategory = Literal["productivity", "finance", "home"]
+GoalUnit = Literal["tasks", "eur", "percent", "minutes"]
+GoalPeriod = Literal["weekly", "monthly"]
+GoalStatus = Literal["on_track", "at_risk", "completed"]
+
+
+class GoalCreate(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    title: str = Field(min_length=1, max_length=200)
+    category: GoalCategory
+    targetValue: float = Field(gt=0)
+    unit: GoalUnit
+    period: GoalPeriod
+
+
+class GoalRead(BaseModel):
+    id: str
+    title: str
+    category: GoalCategory
+    targetValue: float
+    currentValue: float
+    unit: GoalUnit
+    period: GoalPeriod
+    status: GoalStatus
+
+
 class PomodoroSessionCreate(BaseModel):
     label: str | None = Field(default=None, max_length=120)
     task_id: str | None = None

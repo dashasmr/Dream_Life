@@ -13,7 +13,8 @@ const primaryNav = [
   { href: "/work/tasks", label: "Work", prefix: "/work" as const },
   { href: "/life/cleaning", label: "Life", prefix: "/life" as const },
   { href: "/finance/dashboard", label: "Finance", prefix: "/finance" as const },
-  { href: "/insights/activity", label: "Insights", prefix: "/insights" as const }
+  { href: "/insights/activity", label: "Insights", prefix: "/insights" as const },
+  { href: "/settings", label: "Settings", prefix: "/settings" as const }
 ] as const;
 
 function isPrimaryActive(pathname: string, prefix: (typeof primaryNav)[number]["prefix"]): boolean {

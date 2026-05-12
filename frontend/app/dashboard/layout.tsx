@@ -4,6 +4,7 @@ import { SectionTabNav } from "@/components/nav/SectionTabNav";
 
 const DASHBOARD_TABS = [
   { href: "/dashboard/overview", label: "Overview" },
+  { href: "/dashboard/goals", label: "Goals" },
   { href: "/dashboard/command-center", label: "Command Center" },
   { href: "/dashboard/daily-plan", label: "Daily Plan" },
   { href: "/dashboard/recommendations", label: "Recommendations" },

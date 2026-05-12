@@ -63,7 +63,8 @@ function SelectContent({
   sideOffset = 4,
   align = "center",
   alignOffset = 0,
-  alignItemWithTrigger = true,
+  /** When true, the list overlaps the trigger for text alignment — clicks can miss items; prefer false for forms. */
+  alignItemWithTrigger = false,
   ...props
 }: SelectPrimitive.Popup.Props &
   Pick<
@@ -72,13 +73,14 @@ function SelectContent({
   >) {
   return (
     <SelectPrimitive.Portal>
+      <SelectPrimitive.Backdrop className="fixed inset-0 z-[200] bg-transparent" />
       <SelectPrimitive.Positioner
         side={side}
         sideOffset={sideOffset}
         align={align}
         alignOffset={alignOffset}
         alignItemWithTrigger={alignItemWithTrigger}
-        className="isolate z-50"
+        className="isolate z-[210]"
       >
         <SelectPrimitive.Popup
           data-slot="select-content"

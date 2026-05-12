@@ -4,7 +4,7 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
 from app.database import settings
-from app.models import AIReview, CleaningZone, Event, FinanceTransaction, FocusSession, PomodoroSession, Task
+from app.models import AIReview, CleaningZone, Event, FinanceTransaction, FocusSession, Goal, PomodoroSession, Task
 from app.services.insights import build_daily_insight
 from app.schemas import (
     CleaningZoneCreate,
@@ -427,3 +427,39 @@ def upsert_ai_review(
     db.commit()
     db.refresh(row)
     return row
+
+
+def create_goal(
+    db: Session,
+    *,
+    title: str,
+    category: str,
+    target_value: float,
+    unit: str,
+    period: str,
+) -> Goal:
+    row = Goal(
+        title=title.strip() or "Goal",
+        category=category,
+        target_value=target_value,
+        unit=unit,
+        period=period,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def list_goals(db: Session) -> list[Goal]:
+    stmt = select(Goal).order_by(Goal.created_at.desc())
+    return list(db.execute(stmt).scalars().all())
+
+
+def delete_goal(db: Session, goal_id: str) -> bool:
+    row = db.get(Goal, goal_id)
+    if row is None:
+        return False
+    db.delete(row)
+    db.commit()
+    return True
