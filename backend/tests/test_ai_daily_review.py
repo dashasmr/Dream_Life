@@ -21,6 +21,8 @@ def test_post_daily_review_returns_structured_payload(monkeypatch):
         "overdueCleaningZones": [],
         "financeSummary": {"income_total": 0.0, "expense_total": 0.0, "balance_delta": 0.0},
         "financeMonth": {"income_total": 0.0, "expense_total": 0.0, "balance_delta": 0.0},
+        "behaviorPatterns": [],
+        "riskSignals": [],
         "ruleBasedHints": [],
     }
 

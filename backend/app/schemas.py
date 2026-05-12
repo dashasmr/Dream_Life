@@ -188,6 +188,25 @@ class MonthlyReviewRead(BaseModel):
     fallback: bool = False
 
 
+class BehaviorPatternRead(BaseModel):
+    """Rule-based behavioral signal derived from historical events, snapshots, or finance rows."""
+
+    id: str
+    category: Literal["focus", "cleaning", "finance"]
+    confidence: float = Field(ge=0, le=1)
+    message: str
+
+
+class RiskSignalRead(BaseModel):
+    """Early warning derived from trends and thresholds (not LLM output)."""
+
+    id: str
+    severity: Literal["low", "medium", "high"]
+    category: Literal["focus", "finance", "environment"]
+    message: str
+    detectedAt: str
+
+
 class PomodoroSessionCreate(BaseModel):
     label: str | None = Field(default=None, max_length=120)
     task_id: str | None = None

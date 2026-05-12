@@ -15,6 +15,8 @@ from sqlalchemy.orm import Session
 
 from app.crud import finance_totals_in_range, list_cleaning_zones, list_focus_sessions, list_tasks
 from app.models import Event, FinanceTransaction, Task
+from app.services.patterns import run_behavior_pattern_engine
+from app.services.risk_detection import run_risk_detection_engine
 
 _TIMELINE_HEADLINE: dict[str, str] = {
     "work_started": "Manual event logged",
@@ -250,6 +252,12 @@ def build_daily_ai_context(db: Session, target_date: date) -> dict[str, Any]:
     if daily_stats["focusMinutes"] < 30 and daily_stats["tasksCompleted"] == 0:
         rule_hints.append("Low execution signals today — consider one small win tomorrow morning.")
 
+    pattern_from = day_start - timedelta(days=30)
+    behavior_patterns = run_behavior_pattern_engine(db, pattern_from, day_end)
+
+    risk_from = day_start - timedelta(days=13)
+    risk_signals = run_risk_detection_engine(db, risk_from, day_end)
+
     return {
         "date": target_date.isoformat(),
         "dailyStats": daily_stats,
@@ -267,6 +275,8 @@ def build_daily_ai_context(db: Session, target_date: date) -> dict[str, Any]:
             "expense_total": fin_month["expense_total"],
             "balance_delta": fin_month["balance_delta"],
         },
+        "behaviorPatterns": behavior_patterns,
+        "riskSignals": risk_signals,
         "ruleBasedHints": rule_hints,
     }
 
@@ -368,6 +378,9 @@ def build_monthly_ai_context(db: Session, month_start: datetime, month_end: date
     if month_stats["focusMinutes"] < 120:
         rule_hints.append("Focus minutes are light for a full month — consider protecting blocks.")
 
+    behavior_patterns = run_behavior_pattern_engine(db, month_start, month_end)
+    risk_signals = run_risk_detection_engine(db, month_start, month_end)
+
     return {
         "monthLabel": month_label,
         "monthRange": {
@@ -386,5 +399,7 @@ def build_monthly_ai_context(db: Session, month_start: datetime, month_end: date
         "overdueCleaningZones": overdue,
         "cleaningZonesOverdueCount": overdue_count,
         "currentHomeHealthPercent": _home_health_percent(zones),
+        "behaviorPatterns": behavior_patterns,
+        "riskSignals": risk_signals,
         "ruleBasedHints": rule_hints,
     }

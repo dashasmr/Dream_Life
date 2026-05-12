@@ -1,13 +1,22 @@
-from datetime import date
+from datetime import date, datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.crud import get_daily_insight, get_daily_summary
 from app.database import get_db
 from app.models import DailySnapshot
-from app.schemas import DailyInsightRead, DailySnapshotRead, DailySnapshotSystemState, DailySummaryRead
+from app.schemas import (
+    BehaviorPatternRead,
+    DailyInsightRead,
+    DailySnapshotRead,
+    DailySnapshotSystemState,
+    DailySummaryRead,
+    RiskSignalRead,
+)
 from app.services.daily_snapshot import ensure_today_snapshot, generate_daily_snapshot, list_daily_snapshots
+from app.services.patterns import run_behavior_pattern_engine
+from app.services.risk_detection import run_risk_detection_engine
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -63,3 +72,33 @@ def daily_snapshots_list_endpoint(
     ensure_today_snapshot(db)
     rows = list_daily_snapshots(db, limit=limit)
     return [_snapshot_read(r) for r in rows]
+
+
+@router.get("/behavior-patterns", response_model=list[BehaviorPatternRead])
+def behavior_patterns_endpoint(
+    db: Session = Depends(get_db),
+    range_start: datetime = Query(..., alias="from"),
+    range_end: datetime = Query(..., alias="to"),
+):
+    """
+    Half-open window [from, to). Uses UTC-bucketed days for events and snapshot dates aligned to the same bounds.
+    """
+    if range_start >= range_end:
+        raise HTTPException(status_code=422, detail="from must be before to")
+    raw = run_behavior_pattern_engine(db, range_start, range_end)
+    return [BehaviorPatternRead.model_validate(p) for p in raw]
+
+
+@router.get("/risk-signals", response_model=list[RiskSignalRead])
+def risk_signals_endpoint(
+    db: Session = Depends(get_db),
+    range_start: datetime = Query(..., alias="from"),
+    range_end: datetime = Query(..., alias="to"),
+):
+    """
+    Half-open [from, to). Uses up to the last 14 UTC days before `to` for short-horizon trend checks.
+    """
+    if range_start >= range_end:
+        raise HTTPException(status_code=422, detail="from must be before to")
+    raw = run_risk_detection_engine(db, range_start, range_end)
+    return [RiskSignalRead.model_validate(r) for r in raw]

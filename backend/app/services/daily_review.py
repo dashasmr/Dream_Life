@@ -50,7 +50,25 @@ def build_rule_based_daily_review(context: dict[str, Any]) -> dict[str, Any]:
     if not wins:
         wins.append("You kept recording signals in Life OS — the log is there to build on.")
 
+    bps = context.get("behaviorPatterns") or []
+    if isinstance(bps, list) and bps:
+        best = max(bps, key=lambda x: float(x.get("confidence") or 0))
+        if float(best.get("confidence") or 0) >= 0.52:
+            msg = str(best.get("message") or "").strip()
+            if msg and all(msg != str(w).strip() for w in wins):
+                wins.append(msg)
+
     concerns: list[str] = []
+    rs = context.get("riskSignals") or []
+    if isinstance(rs, list):
+        for item in rs:
+            if not isinstance(item, dict):
+                continue
+            if str(item.get("severity") or "") in ("medium", "high"):
+                msg = str(item.get("message") or "").strip()
+                if msg:
+                    concerns.append(msg)
+
     overdue = context.get("overdueCleaningZones") or []
     if overdue:
         names = ", ".join(z.get("name", "Zone") for z in overdue[:5])
@@ -81,6 +99,11 @@ def build_openai_daily_review(context: dict[str, Any], api_key: str, model: str)
     system = (
         "You are a calm personal Life OS coach. You receive a single JSON object describing one calendar day "
         "(productivity, home cleaning zones, finance aggregates, timeline highlights). "
+        "The object may include behaviorPatterns: each item has id, category (focus|cleaning|finance), "
+        "confidence (0-1), and message — these are rule-based behavioral analytics, not user prose. "
+        "When confidence is at least 0.5 you may reflect at most one such pattern in wins or concerns without contradicting it. "
+        "The object may include riskSignals: severity low|medium|high, category focus|finance|environment, message — "
+        "treat medium/high as worth a concise concern when they fit the day's story; do not invent new risks. "
         "Answer from that data only — do not invent events. "
         "Respond with strict JSON only (no markdown) and exactly these keys: "
         'title (short string), summary (2-4 sentences), wins (array of 2-5 short strings), '

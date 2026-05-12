@@ -23,9 +23,11 @@ import {
   formatDateFiNumeric,
   formatDateTimeFiNumeric,
   getLocalDayRangeIso,
+  getLocalLastNDaysRangeIso,
   getLocalMonthRangeIso,
   localCalendarDayKeyFromDate
 } from "@/lib/datetime";
+import type { RiskSignal } from "@/lib/risks";
 import { ui } from "@/lib/ui";
 import { DashboardNotificationsSection } from "@/components/DashboardNotificationsSection";
 import { Button } from "@/components/ui/button";
@@ -79,6 +81,22 @@ function SystemStatusIcon({ pillar }: { pillar: SystemStatusPillar["key"] }) {
   return <Wallet className={cls} strokeWidth={1.75} />;
 }
 
+function riskSeverityShell(severity: RiskSignal["severity"]): string {
+  if (severity === "high") {
+    return "border-l-[#a04444] bg-[#1a1212]";
+  }
+  if (severity === "medium") {
+    return "border-l-[#8a7349] bg-[#1a1812]";
+  }
+  return "border-l-[#5a6570] bg-[#141A22]";
+}
+
+function riskSeverityLabel(severity: RiskSignal["severity"]): string {
+  if (severity === "high") return "High";
+  if (severity === "medium") return "Medium";
+  return "Low";
+}
+
 const EVENT_TYPES: EventType[] = [
   "work_started",
   "focus_started",
@@ -112,6 +130,7 @@ export function OverviewDashboard({ tab }: { tab: DashboardTabId }) {
   const [focusSessions, setFocusSessions] = useState<FocusSession[]>([]);
   const [recActionBusy, setRecActionBusy] = useState<string | null>(null);
   const [planCompletedIds, setPlanCompletedIds] = useState<Set<string>>(() => new Set());
+  const [riskSignals, setRiskSignals] = useState<RiskSignal[]>([]);
   const showDebugTools = process.env.NODE_ENV === "development";
 
   // Large limit so same-day KPIs and recommendations see the full recent log (see `computeDailyStats` caveats).
@@ -161,6 +180,17 @@ export function OverviewDashboard({ tab }: { tab: DashboardTabId }) {
     setFocusSessions(await response.json());
   }
 
+  async function loadRiskSignals() {
+    const { from, to } = getLocalLastNDaysRangeIso(14);
+    const qs = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+    const response = await fetch(`${API_URL}/analytics/risk-signals?${qs}`, { cache: "no-store" });
+    if (!response.ok) {
+      setRiskSignals([]);
+      return;
+    }
+    setRiskSignals((await response.json()) as RiskSignal[]);
+  }
+
   async function refreshRecommendationDrivers() {
     await Promise.all([
       loadCommandCenterZones(),
@@ -168,7 +198,8 @@ export function OverviewDashboard({ tab }: { tab: DashboardTabId }) {
       loadCommandCenterTasks(),
       loadFinanceRangeSummaries(),
       loadSummary(),
-      loadEvents()
+      loadEvents(),
+      loadRiskSignals()
     ]);
   }
 
@@ -205,7 +236,8 @@ export function OverviewDashboard({ tab }: { tab: DashboardTabId }) {
       loadCommandCenterTasks(),
       loadCommandCenterZones(),
       loadFinanceRangeSummaries(),
-      loadFocusSessions()
+      loadFocusSessions(),
+      loadRiskSignals()
     ]).catch((err: unknown) => {
       setError(describeFetchFailure(err));
     });
@@ -841,6 +873,47 @@ export function OverviewDashboard({ tab }: { tab: DashboardTabId }) {
             </Card>
           ))}
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-[#2A2F36] bg-[#11151A] p-5 md:p-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold text-white">Risk signals</h2>
+            <p className={`mt-1 text-sm ${ui.mutedText}`}>
+              Rule-based early warnings from the last 14 days (focus, home, spending). Not AI-generated.
+            </p>
+          </div>
+        </div>
+        {riskSignals.length === 0 ? (
+          <p className={`mt-4 rounded-xl border border-[#2A2F36] bg-[#0F1318] px-4 py-3 text-sm ${ui.mutedText}`}>
+            No elevated risks detected in this window.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {riskSignals.map((r) => (
+              <li
+                key={`${r.id}-${r.detectedAt}`}
+                className={`rounded-xl border border-[#2A2F36] border-l-4 px-4 py-3 ${riskSeverityShell(r.severity)}`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-[#9aa3ad]">{r.category}</span>
+                  <span
+                    className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                      r.severity === "high"
+                        ? "border-[#a04444]/80 bg-[#2a1616] text-[#ffb3b3]"
+                        : r.severity === "medium"
+                          ? "border-[#8a7349]/80 bg-[#221c12] text-[#f3d59e]"
+                          : "border-[#2A2F36] bg-[#141A22] text-[#c9d0d8]"
+                    }`}
+                  >
+                    {riskSeverityLabel(r.severity)}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-[#E5E5E5]">{r.message}</p>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="rounded-2xl border border-[#2A2F36] bg-[#11151A] p-5 md:p-6">

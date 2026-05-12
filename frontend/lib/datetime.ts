@@ -58,6 +58,16 @@ export function getLocalMonthRangeIso(ref: Date = new Date()): { from: string; t
   return { from: start.toISOString(), to: end.toISOString() };
 }
 
+/** Half-open window covering the last `dayCount` local calendar days ending on `ref` (inclusive). */
+export function getLocalLastNDaysRangeIso(dayCount: number, ref: Date = new Date()): { from: string; to: string } {
+  const y = ref.getFullYear();
+  const m = ref.getMonth();
+  const d = ref.getDate();
+  const end = new Date(y, m, d + 1, 0, 0, 0, 0);
+  const start = new Date(y, m, d - (dayCount - 1), 0, 0, 0, 0);
+  return { from: start.toISOString(), to: end.toISOString() };
+}
+
 /** Local calendar day key YYYY-MM-DD (for grouping events by day). */
 export function localDateKeyFromIso(iso: string): string {
   const d = new Date(iso);

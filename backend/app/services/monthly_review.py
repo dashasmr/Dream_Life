@@ -66,6 +66,16 @@ def build_rule_based_monthly_review(context: dict[str, Any]) -> dict[str, Any]:
         wins.append("You kept logging in Life OS — that history is the base for next month's lift.")
 
     risks: list[str] = []
+    rs = context.get("riskSignals") or []
+    if isinstance(rs, list):
+        for item in rs:
+            if not isinstance(item, dict):
+                continue
+            if str(item.get("severity") or "") in ("medium", "high"):
+                msg = str(item.get("message") or "").strip()
+                if msg and msg not in risks:
+                    risks.append(msg)
+
     if overdue_n > 0:
         risks.append(f"{overdue_n} cleaning zone(s) are currently overdue — home load may compound.")
     if fin["balance_delta"] < 0:
@@ -76,8 +86,17 @@ def build_rule_based_monthly_review(context: dict[str, Any]) -> dict[str, Any]:
         risks.append("No sharp risk flags in the rolled-up metrics — still revisit assumptions monthly.")
 
     patterns: list[str] = []
+    bps = context.get("behaviorPatterns") or []
+    if isinstance(bps, list):
+        for p in sorted(bps, key=lambda x: -float(x.get("confidence") or 0)):
+            if float(p.get("confidence") or 0) >= 0.48:
+                msg = str(p.get("message") or "").strip()
+                if msg and msg not in patterns:
+                    patterns.append(msg)
     if top_cat and top_amt > 0:
-        patterns.append(f"{top_cat} led spending at about €{top_amt:.2f} in expenses.")
+        line = f"{top_cat} led spending at about €{top_amt:.2f} in expenses."
+        if line not in patterns:
+            patterns.append(line)
     if stats["tasksCompleted"] > 0 and stats["focusMinutes"] > 0:
         patterns.append("Both tasks and focus minutes appear — mixed execution style this month.")
     if not patterns:
@@ -106,6 +125,9 @@ def build_openai_monthly_review(context: dict[str, Any], api_key: str, model: st
     system = (
         "You are a calm personal Life OS coach. You receive one JSON object describing a calendar month "
         "(productivity aggregates, finance totals, cleaning/home signals, optional top spending category). "
+        "The object may include behaviorPatterns: rule-based analytics (id, category, confidence, message). "
+        "You may echo or paraphrase up to two high-confidence items (confidence >= 0.5) inside your patterns array. "
+        "The object may include riskSignals (severity, category, message) — fold medium/high items into risks when relevant. "
         "Answer from that data only — do not invent transactions or tasks. "
         "Respond with strict JSON only (no markdown) and exactly these keys: "
         "title (short string), summary (3-5 sentences), wins (array of 2-5 short strings), "

@@ -22,6 +22,8 @@ def test_post_monthly_review_returns_structured_payload(monkeypatch):
         "overdueCleaningZones": [],
         "cleaningZonesOverdueCount": 0,
         "currentHomeHealthPercent": 80,
+        "behaviorPatterns": [],
+        "riskSignals": [],
         "ruleBasedHints": [],
     }
 
