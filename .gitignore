@@ -7,5 +7,5 @@ __pycache__/
 node_modules/
 dist/
 
-# Local demo walkthrough (~300MB+); keep in docs/ for README viewing, do not commit
+# Full-resolution local recording only (too large for git)
 docs/Dream_life_demo.mp4
