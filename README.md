@@ -61,45 +61,53 @@ Shared design tokens, theme presets, and an i18n foundation with section-based m
 
 ## Screenshots
 
+Screens follow the product flow: Dashboard, Work, Life, Insights.
+
 ### Dashboard overview
 
-Today, current state, and a two-week patterns preview on the main overview.
+Today, current state, and a patterns preview on the overview page.
 
 ![Dashboard overview](assets/screenshots/dashboard-overview.png)
 
 ### Goals
 
-Goals tied to savings, home score, tasks, or focus, with progress from logged activity.
+Goal setup and monthly progress (savings, home, tasks, focus).
 
 ![Goals](assets/screenshots/goals.png)
 
-### Focus system
+### Suggestions
 
-Tasks, active focus session, and recent session history.
+Gentle nudges, ideas for now, today’s note, and quick actions.
 
-![Focus system](assets/screenshots/focus-system.png)
+![Suggestions](assets/screenshots/suggestions.png)
+
+### Tasks
+
+Today’s focus, queue filters, and adding a task.
+
+![Tasks](assets/screenshots/tasks.png)
+
+### Focus
+
+Active session, streaks, and starting a new focus block.
+
+![Focus](assets/screenshots/focus-system.png)
 
 ### Home care
 
-Cleaning zones, home health, and care streaks.
+Cleaning zones, home health, and recent care history.
 
 ![Home care](assets/screenshots/home-care.png)
 
 ### Patterns
 
-Life rhythm grid and day summaries over a selected range.
+Full patterns page with life rhythm, focus rhythm, and related charts.
 
 ![Patterns](assets/screenshots/patterns.png)
 
-### Life flow
-
-Activity stream grouped by time of day.
-
-![Life flow](assets/screenshots/life-flow.png)
-
 ### Weekly review
 
-Work, home, and money in one weekly summary with short observations.
+Weekly summary for work, home, and money with short observations.
 
 ![Weekly review](assets/screenshots/weekly-review.png)
 
@@ -261,7 +269,7 @@ Life OS/
 ├── backend/           # FastAPI, Alembic, tests
 ├── assets/
 │   ├── demo/          # Demo video
-│   └── screenshots/   # README images
+│   └── screenshots/   # README images (dashboard, work, life, insights)
 └── docker-compose.yml
 ```
 
